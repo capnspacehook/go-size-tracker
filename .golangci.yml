@@ -50,7 +50,7 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(github.com/capnspacehook/go-project-template)
+      - prefix(github.com/capnspacehook/go-size-tracker)
   misspell:
     locale: US
   paralleltest:

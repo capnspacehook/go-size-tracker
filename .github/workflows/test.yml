@@ -31,23 +31,6 @@ jobs:
         run: |
           go test -race -timeout 5m -v ./...
 
-  fuzz:
-    runs-on: ubuntu-latest
-    needs: race-test
-    timeout-minutes: 15
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Go
-        uses: actions/setup-go@v4
-        with:
-          go-version-file: go.mod
-
-      - name: Fuzz code for 10 minutes
-        run: |
-          go test -fuzz Fuzz -run DONOT -fuzztime 10m
-
   build-image:
     runs-on: ubuntu-latest
     # only run this check on pull requests, pushes to master will trigger

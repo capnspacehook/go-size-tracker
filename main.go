@@ -9,19 +9,17 @@ import (
 	"os/signal"
 	"runtime/debug"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	actions "github.com/sethvargo/go-githubactions"
+	"golang.org/x/sys/unix"
 )
 
-const projectName = "Go Project Template" // REPLACE WITH YOUR PROJECT NAME HERE
+const projectName = "Go Size Tracker"
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `
-<Project description>
+A Github Action that lets you know how your code changes affect binary size
 
-	<binary name> [flags]
-
-<Project details/usage>
+	go-size-tracker [flags]
 
 %s accepts the following flags:
 
@@ -29,7 +27,7 @@ func usage() {
 	flag.PrintDefaults()
 	fmt.Fprint(os.Stderr, `
 
-For more information, see https://github.com/<user>/<repo>.
+For more information, see https://github.com/capnspacehook/go-size-tracker.
 `[1:])
 }
 
@@ -40,13 +38,11 @@ func main() {
 func mainRetCode() int {
 	var (
 		debugLogs    bool
-		logPath      string
 		printVersion bool
 	)
 
 	flag.Usage = usage
 	flag.BoolVar(&debugLogs, "debug", false, "enable debug logging")
-	flag.StringVar(&logPath, "l", "stdout", "path to log to")
 	flag.BoolVar(&printVersion, "version", false, "print version and build information and exit")
 	flag.Parse()
 
@@ -61,39 +57,11 @@ func mainRetCode() int {
 		return 0
 	}
 
-	// build logger
-	logCfg := zap.NewProductionConfig()
-	logCfg.OutputPaths = []string{logPath}
-	if debugLogs {
-		logCfg.Level.SetLevel(zap.DebugLevel)
-	}
-	logCfg.EncoderConfig.TimeKey = "time"
-	logCfg.EncoderConfig.EncodeTime = zapcore.RFC3339NanoTimeEncoder
-	logCfg.DisableCaller = true
-
-	logger, err := logCfg.Build()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating logger: %v", err)
-		return 1
-	}
-
-	// log current version/commit
-	versionFields := []zap.Field{
-		zap.String("version", version),
-	}
-	for _, buildSetting := range info.Settings {
-		if buildSetting.Key == "vcs.revision" {
-			versionFields = append(versionFields, zap.String("commit", buildSetting.Value))
-			break
-		}
-	}
-	logger.Info("starting "+projectName, versionFields...)
-
-	// may also want to add golang.org/x/sys/unix.SIGTERM on unix based OSes
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, unix.SIGTERM)
 	defer cancel()
 
-	if err := mainErr(ctx, logger); err != nil {
+	action := actions.New()
+	if err := mainErr(ctx, action); err != nil {
 		var exitCode *errJustExit
 		if errors.As(err, &exitCode) {
 			return int(*exitCode)
@@ -112,11 +80,11 @@ func (e errJustExit) Error() string { return fmt.Sprintf("exit: %d", e) }
 // here, remove this when adding your own code that can return errors
 //
 //nolint:unparam
-func mainErr(ctx context.Context, logger *zap.Logger) error {
+func mainErr(ctx context.Context, action *actions.Action) error {
 	// START MAIN LOGIC HERE
 
 	<-ctx.Done()
-	logger.Info("shutting down")
+	action.Infof("shutting down")
 
 	// STOP MAIN LOGIC HERE
 

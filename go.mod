@@ -4,6 +4,9 @@ go 1.21.0
 
 toolchain go1.21.1
 
-require go.uber.org/zap v1.25.0
+require (
+	github.com/sethvargo/go-githubactions v1.1.0
+	golang.org/x/sys v0.12.0
+)
 
-require go.uber.org/multierr v1.10.0 // indirect
+require github.com/sethvargo/go-envconfig v0.8.0 // indirect
