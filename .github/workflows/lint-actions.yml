@@ -1,0 +1,27 @@
+name: Lint workflows
+
+on:
+  push:
+    paths:
+      - ".github/workflows/*"
+
+  workflow_dispatch: {}
+
+jobs:
+  lint-workflows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod
+
+      - name: Lint workflow files
+        run: |
+          echo "::add-matcher::.github/actionlint-matcher.json"
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          actionlint
