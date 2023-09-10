@@ -9,4 +9,7 @@ require (
 	golang.org/x/sys v0.12.0
 )
 
-require github.com/sethvargo/go-envconfig v0.8.0 // indirect
+require (
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
+	github.com/sethvargo/go-envconfig v0.8.0 // indirect
+)

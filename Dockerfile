@@ -8,17 +8,15 @@ WORKDIR /build
 # hadolint ignore=DL3018
 RUN apk add --no-cache git
 
-# build as PIE to take advantage of exploit mitigations
 ARG CGO_ENABLED=0
 ARG VERSION=devel
-RUN go build -buildmode=pie -buildvcs=true -ldflags "-s -w -X main.version=${VERSION}" -trimpath -o go-project-template
+RUN go build -buildvcs=true -ldflags "-s -w -X main.version=${VERSION}" -trimpath -o go-size-tracker
 
-# pie-loader is built and scanned daily, we want the most recent version
-# hadolint ignore=DL3007
-FROM ghcr.io/capnspacehook/pie-loader:latest
-COPY --from=builder /build/go-project-template /go-project-template
+FROM alpine:3.18.3
 
-USER 1000:1000
+COPY --from=builder /build/go-size-tracker /go-size-tracker
+# ignore warning that a specific version of git isn't pinned
+# hadolint ignore=DL3018
+RUN apk add --no-cache git
 
-ENTRYPOINT [ "/go-project-template" ]
-CMD [ "-version" ]
+ENTRYPOINT [ "/go-size-tracker" ]

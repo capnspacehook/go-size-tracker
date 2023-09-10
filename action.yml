@@ -1,0 +1,19 @@
+name: "Go Size Tracker"
+description: "A Github Action that lets you know how your code changes affect binary size"
+author: "Andrew LeFevre"
+inputs:
+  working-directory:
+    description: Relative path to the working directory that should be used to build your binary.
+    required: false
+    default: "."
+  build-command:
+    description: |
+      Command that will build the your binary. The binary must be written to a file named 'out'
+      in the working directory.
+    required: false
+    default: |
+      go build -buildvcs=true -ldflags="-s -w" -trimpath -o out
+
+runs:
+  using: docker
+  image: ghcr.io/capnspacehook/go-size-tracker:latest
