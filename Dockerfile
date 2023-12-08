@@ -12,7 +12,7 @@ ARG CGO_ENABLED=0
 ARG VERSION=devel
 RUN go build -buildvcs=true -ldflags "-s -w -X main.version=${VERSION}" -trimpath -o go-size-tracker
 
-FROM alpine:3.18.4
+FROM alpine:3.19.0
 
 COPY --from=builder /build/go-size-tracker /go-size-tracker
 # ignore warning that a specific version of git isn't pinned
