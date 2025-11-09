@@ -221,13 +221,15 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 }
 
 func runCmd(ctx context.Context, action *actions.Action, name string, args ...string) ([]byte, error) {
+	var buf bytes.Buffer
 	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
 	action.Debugf("running command: %s", cmd)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("running command %s:\n%s\n%w", cmd, string(out), err)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("running command %s:\n%s\n%w", cmd, buf.String(), err)
 	}
-	return out, nil
+	return buf.Bytes(), nil
 }
 
 func runSilentCmd(ctx context.Context, action *actions.Action, name string, args ...string) error {
