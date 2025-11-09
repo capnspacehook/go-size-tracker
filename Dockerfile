@@ -17,6 +17,7 @@ WORKDIR /work
 # remove source code, and ensure we don't get errors trying to stamp
 # VCS info in the binary
 RUN rm -rf /build && \
-    git config --global --add safe.directory .
+    git config --global --add safe.directory . && \
+    git config --global --add safe.directory /github/workspace
 
 ENTRYPOINT [ "/bin/go-size-tracker" ]
