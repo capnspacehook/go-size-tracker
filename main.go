@@ -158,6 +158,11 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return fmt.Errorf("output file is a %s file not a regular file", fi.Mode().Type())
 	}
 
+	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", "/github/workspace")
+	if err != nil {
+		return fmt.Errorf("setting git safe directory: %w", err)
+	}
+
 	err = runSilentCmd(ctx, action, "git", "fetch", "origin", "+refs/notes/go-size-tracker:refs/notes/go-size-tracker")
 	if err != nil {
 		return fmt.Errorf("fetching git notes: %w", err)
