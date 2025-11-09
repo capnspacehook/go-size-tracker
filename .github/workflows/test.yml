@@ -14,14 +14,11 @@ jobs:
   run-action:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
-      - name: Install Go
-        uses: actions/setup-go@v4
-        with:
-          go-version-file: go.mod
 
       - name: Run action
         uses: ./
