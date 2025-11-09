@@ -1,4 +1,4 @@
-FROM golang:1.25.4-alpine AS builder
+FROM golang:1.25.4-alpine
 
 COPY . /build
 WORKDIR /build
@@ -10,13 +10,6 @@ RUN apk add --no-cache git
 
 ARG CGO_ENABLED=0
 ARG VERSION=devel
-RUN go build -buildvcs=true -ldflags "-s -w -X main.version=${VERSION}" -trimpath -o go-size-tracker
-
-FROM alpine:latest
-
-COPY --from=builder /build/go-size-tracker /go-size-tracker
-# ignore warning that a specific version of git isn't pinned
-#hadolint ignore=DL3018
-RUN apk add --no-cache git
+RUN go build -buildvcs=true -ldflags "-s -w -X main.version=${VERSION}" -trimpath -o /bin/go-size-tracker
 
 ENTRYPOINT [ "/go-size-tracker" ]
