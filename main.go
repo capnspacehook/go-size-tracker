@@ -118,6 +118,8 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	addRecord := true
 	switch ghCtx.EventName {
 	case "push":
+		// don't add record if this is a push to a branch on a PR
+		// TODO: only do this if the branch is the default branch
 		owner, repo := ghCtx.Repo()
 		prs, _, err := ghCli.PullRequests.List(context.Background(), owner, repo, &github.PullRequestListOptions{
 			State: "open",
@@ -138,7 +140,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	case "pull_request":
 		addRecord = false
 	default:
-		action.Infof("triggered by event name %s, exiting", ghCtx.EventName)
+		action.Infof("triggered by %s event, exiting", ghCtx.EventName)
 		return nil
 	}
 
@@ -163,9 +165,18 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return fmt.Errorf("setting git safe directory: %w", err)
 	}
 
-	err = runSilentCmd(ctx, action, "git", "fetch", "origin", "+refs/notes/go-size-tracker:refs/notes/go-size-tracker")
+	var noSizeRecords bool
+	noteFetchOutput, err := runCmd(ctx, action, "git", "fetch", "origin", "+refs/notes/go-size-tracker:refs/notes/go-size-tracker")
 	if err != nil {
-		return fmt.Errorf("fetching git notes: %w", err)
+		if strings.Contains(string(noteFetchOutput), "couldn't find remote ref") {
+			action.Infof("no size records to compare against")
+			if !addRecord {
+				return nil
+			}
+			noSizeRecords = true
+		} else {
+			return fmt.Errorf("fetching git notes: %w", err)
+		}
 	}
 
 	record, err := createRecord(ctx, action, ghCtx, fi.Size())
@@ -178,6 +189,9 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		if err != nil {
 			return fmt.Errorf("adding size record: %w", err)
 		}
+		return nil
+	}
+	if noSizeRecords {
 		return nil
 	}
 
