@@ -184,6 +184,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	var noSizeRecords bool
 	noteFetchOutput, err := runCmd(ctx, action, "git", "fetch", "origin", "+refs/notes/go-size-tracker:refs/notes/go-size-tracker")
 	if err != nil {
+		actions.Infof("git fetch output: %s", string(noteFetchOutput))
 		if strings.Contains(string(noteFetchOutput), "couldn't find remote ref") {
 			action.Infof("no size records to compare against")
 			if !addRecord {
