@@ -12,7 +12,7 @@ inputs:
       in the working directory.
     required: false
     default: |
-      go build -buildvcs=true -ldflags="-s -w" -trimpath -o out
+      go build -buildvcs=false -ldflags="-s -w" -trimpath -o out
 
 runs:
   using: docker
