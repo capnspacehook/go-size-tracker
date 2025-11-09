@@ -168,6 +168,14 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return fmt.Errorf("output file is a %s file not a regular file", fi.Mode().Type())
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", cwd)
+	if err != nil {
+		return fmt.Errorf("setting git safe directory: %w", err)
+	}
 	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", "/github/workspace")
 	if err != nil {
 		return fmt.Errorf("setting git safe directory: %w", err)
