@@ -121,7 +121,15 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		// don't add record if this is a push to a branch on a PR
 		// TODO: only do this if the branch is the default branch
 		owner, repo := ghCtx.Repo()
-		prs, _, err := ghCli.PullRequests.List(context.Background(), owner, repo, &github.PullRequestListOptions{
+		repository, _, err := ghCli.Repositories.Get(ctx, owner, repo)
+		if err != nil {
+			return fmt.Errorf("getting repository: %w", err)
+		}
+		if ghCtx.HeadRef != repository.GetDefaultBranch() {
+			action.Infof("triggered by push to head ref %s, default branch is %s", ghCtx.HeadRef, repository.GetDefaultBranch())
+		}
+
+		prs, _, err := ghCli.PullRequests.List(ctx, owner, repo, &github.PullRequestListOptions{
 			State: "open",
 		})
 		if err != nil {
