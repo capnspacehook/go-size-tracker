@@ -14,6 +14,7 @@ RUN go build -buildvcs=true -ldflags "-s -w -X main.version=${VERSION}" -trimpat
 
 WORKDIR /work
 
-RUN rm -rf /build
+RUN rm -rf /build && \
+    git config --global --add safe.directory .
 
 ENTRYPOINT [ "/bin/go-size-tracker" ]
