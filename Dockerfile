@@ -12,4 +12,4 @@ ARG CGO_ENABLED=0
 ARG VERSION=devel
 RUN go build -buildvcs=true -ldflags "-s -w -X main.version=${VERSION}" -trimpath -o /bin/go-size-tracker
 
-ENTRYPOINT [ "/go-size-tracker" ]
+ENTRYPOINT [ "/bin/go-size-tracker" ]
