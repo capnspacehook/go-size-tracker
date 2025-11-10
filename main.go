@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,8 +26,7 @@ import (
 )
 
 const (
-	projectName   = "Go Size Tracker"
-	iso8601Layout = "2006-01-02T15:04:05-07:00"
+	projectName = "Go Size Tracker"
 )
 
 func usage() {
@@ -261,14 +261,15 @@ func createRecord(ctx context.Context, action *actions.Action, ghCtx *actions.Gi
 	action.Group("Creating size record")
 	defer action.EndGroup()
 
-	date, err := runCmd(ctx, action, "git", "log", "--pretty=format:%cI", "-1")
+	date, err := runCmd(ctx, action, "git", "log", "--pretty=format:%ct", "-1")
 	if err != nil {
 		return nil, fmt.Errorf("getting commit time: %w", err)
 	}
-	commitDate, err := time.Parse(iso8601Layout, string(date))
+	unixSecs, err := strconv.ParseInt(string(date), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("parsing commit time: %w", err)
 	}
+	commitDate := time.Unix(unixSecs, 0)
 
 	return &sizeRecord{
 		Commit: ghCtx.SHA,
