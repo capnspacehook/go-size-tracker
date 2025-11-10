@@ -264,7 +264,7 @@ func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) er
 		return fmt.Errorf("encoding size record: %w", err)
 	}
 
-	err = runSilentCmd(ctx, action, "git", "notes", "ref=refs/notes/go-size-tracker", "add", "-m", string(enc), "-f")
+	err = runSilentCmd(ctx, action, "git", "notes", "--ref=refs/notes/go-size-tracker", "add", "-m", string(enc), "-f")
 	if err != nil {
 		return fmt.Errorf("creating git note of size record: %w", err)
 	}
@@ -277,7 +277,7 @@ func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) er
 }
 
 func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecord) error {
-	notes, err := runCmd(ctx, action, "git", "notes", "ref=refs/notes/go-size-tracker", "list")
+	notes, err := runCmd(ctx, action, "git", "notes", "--ref=refs/notes/go-size-tracker", "list")
 	if err != nil {
 		return fmt.Errorf("listing git notes: %w", err)
 	}
