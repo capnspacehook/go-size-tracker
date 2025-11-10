@@ -126,7 +126,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 			return fmt.Errorf("getting repository: %w", err)
 		}
 		if ghCtx.HeadRef != repository.GetDefaultBranch() {
-			action.Infof("triggered by push to head ref %s, default branch is %s", ghCtx.HeadRef, repository.GetDefaultBranch())
+			action.Infof("triggered by push to head ref %s, default branch is %s", ghCtx.Ref, repository.GetDefaultBranch())
 		}
 
 		prs, _, err := ghCli.PullRequests.List(ctx, owner, repo, &github.PullRequestListOptions{
@@ -236,7 +236,7 @@ func runSilentCmd(ctx context.Context, action *actions.Action, name string, args
 }
 
 func createRecord(ctx context.Context, action *actions.Action, ghCtx *actions.GitHubContext, size int64) (*sizeRecord, error) {
-	date, err := runCmd(ctx, action, "git", "log", "--format=format:%cI", "n=1")
+	date, err := runCmd(ctx, action, "git", "log", "--pretty=format:%cI", "-1")
 	if err != nil {
 		return nil, fmt.Errorf("getting commit time: %w", err)
 	}
