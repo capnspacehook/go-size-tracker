@@ -208,8 +208,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 
 func runCmd(ctx context.Context, action *actions.Action, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	action.Infof("%s", cmd)
-	fmt.Println(cmd.String())
+	action.Infof("##[command]%s", cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return out, fmt.Errorf("running command %s:\n%s\n%w", cmd, string(out), err)
