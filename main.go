@@ -129,23 +129,6 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		if triggeredBranch != repository.GetDefaultBranch() {
 			addRecord = false
 		}
-
-		prs, _, err := ghCli.PullRequests.List(ctx, owner, repo, &github.PullRequestListOptions{
-			State: "open",
-		})
-		if err != nil {
-			return fmt.Errorf("getting pull requests: %w", err)
-		}
-
-		for _, pr := range prs {
-			if pr.Head == nil {
-				continue
-			}
-			if pr.Head.GetRef() == ghCtx.HeadRef {
-				addRecord = false
-				break
-			}
-		}
 	case "pull_request":
 		addRecord = false
 	default:
@@ -235,7 +218,7 @@ func setupGit(ctx context.Context, action *actions.Action) error {
 	if err != nil {
 		return fmt.Errorf("setting git safe directory: %w", err)
 	}
-	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", "/github/workspace")
+	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", "/work")
 	if err != nil {
 		return fmt.Errorf("setting git safe directory: %w", err)
 	}
@@ -303,8 +286,6 @@ type sizeRecord struct {
 func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) error {
 	action.Group("Adding size record")
 	defer action.EndGroup()
-
-	action.Infof("Adding size record for commit %s", record.Commit)
 
 	enc, err := json.Marshal(record)
 	if err != nil {
