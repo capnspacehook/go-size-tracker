@@ -31,7 +31,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: size-graph
-          path: grapn.png
+          path: ${{ github.workspace }}/grapn.png
 
   race-test:
     runs-on: ubuntu-latest
