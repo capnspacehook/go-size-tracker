@@ -71,6 +71,8 @@ func mainRetCode() int {
 	defer cancel()
 
 	action := actions.New()
+	action.Infof("Starting go-size-tracker")
+
 	if err := mainErr(ctx, action); err != nil {
 		var exitCode *errJustExit
 		if errors.As(err, &exitCode) {
@@ -109,7 +111,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return fmt.Errorf("getting github context: %w", err)
 	}
 	if ghCtx.RefType == "tag" {
-		action.Infof("triggered by a tag, exiting")
+		action.Infof("Triggered by a tag, exiting")
 		return nil
 	}
 
@@ -125,8 +127,8 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		if err != nil {
 			return fmt.Errorf("getting repository: %w", err)
 		}
-		if ghCtx.HeadRef != repository.GetDefaultBranch() {
-			action.Infof("triggered by push to head ref %s, default branch is %s", ghCtx.Ref, repository.GetDefaultBranch())
+		if ghCtx.Ref != repository.GetDefaultBranch() {
+			action.Infof("Triggered by push to ref (%s) %s, default branch is %s", ghCtx.Ref, ghCtx.RefType, repository.GetDefaultBranch())
 		}
 
 		prs, _, err := ghCli.PullRequests.List(ctx, owner, repo, &github.PullRequestListOptions{
@@ -148,24 +150,14 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	case "pull_request":
 		addRecord = false
 	default:
-		action.Infof("triggered by %s event, exiting", ghCtx.EventName)
+		action.Infof("Triggered by %s event, exiting", ghCtx.EventName)
 		return nil
 	}
-
-	err = runSilentCmd(ctx, action, buildArgs[0], buildArgs[1:]...)
-	if err != nil {
-		return fmt.Errorf("running build command: %w", err)
+	if addRecord {
+		action.Infof("Adding size record for commit %s", ghCtx.SHA)
 	}
-
-	fi, err := os.Stat("out")
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return errors.New("expected output file 'out' does not exist")
-		}
-		return fmt.Errorf("error reading output file: %w", err)
-	}
-	if !fi.Mode().Type().IsRegular() {
-		return fmt.Errorf("output file is a %s file not a regular file", fi.Mode().Type())
+	if !addRecord {
+		action.Infof("Will not add size record for push to non default branch")
 	}
 
 	if err := setupGit(ctx, action); err != nil {
@@ -175,9 +167,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	var noSizeRecords bool
 	noteFetchOutput, err := runCmd(ctx, action, "git", "fetch", "origin", "+refs/notes/go-size-tracker:refs/notes/go-size-tracker")
 	if err != nil {
-		actions.Infof("git fetch output: %s", string(noteFetchOutput))
 		if strings.Contains(string(noteFetchOutput), "couldn't find remote ref") {
-			action.Infof("no size records to compare against")
 			if !addRecord {
 				return nil
 			}
@@ -186,8 +176,17 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 			return fmt.Errorf("fetching git notes: %w", err)
 		}
 	}
+	if !addRecord && noSizeRecords {
+		action.Infof("No size records to compare against")
+		return nil
+	}
 
-	record, err := createRecord(ctx, action, ghCtx, fi.Size())
+	size, err := buildBinary(ctx, action, buildArgs)
+	if err != nil {
+		return fmt.Errorf("building binary: %w", err)
+	}
+
+	record, err := createRecord(ctx, action, ghCtx, size)
 	if err != nil {
 		return fmt.Errorf("creating size record: %w", err)
 	}
@@ -197,9 +196,6 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		if err != nil {
 			return fmt.Errorf("adding size record: %w", err)
 		}
-		return nil
-	}
-	if noSizeRecords {
 		return nil
 	}
 
@@ -213,7 +209,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 
 func runCmd(ctx context.Context, action *actions.Action, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	action.Debugf("running command: %s", cmd)
+	action.Noticef("%s", cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return out, fmt.Errorf("running command %s:\n%s\n%w", cmd, string(out), err)
@@ -229,6 +225,9 @@ func runSilentCmd(ctx context.Context, action *actions.Action, name string, args
 // setting the global git config in the image itself doesn't seem to work
 // for some reason, so we do it every time here instead
 func setupGit(ctx context.Context, action *actions.Action) error {
+	action.Group("Setting up git")
+	defer action.EndGroup()
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
@@ -253,7 +252,33 @@ func setupGit(ctx context.Context, action *actions.Action) error {
 	return nil
 }
 
+func buildBinary(ctx context.Context, action *actions.Action, buildArgs []string) (int64, error) {
+	action.Group("Building binary")
+	defer action.EndGroup()
+
+	err := runSilentCmd(ctx, action, buildArgs[0], buildArgs[1:]...)
+	if err != nil {
+		return 0, fmt.Errorf("running build command: %w", err)
+	}
+
+	fi, err := os.Stat("out")
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 0, errors.New("expected output file 'out' does not exist")
+		}
+		return 0, fmt.Errorf("error reading output file: %w", err)
+	}
+	if !fi.Mode().Type().IsRegular() {
+		return 0, fmt.Errorf("output file is a %s file not a regular file", fi.Mode().Type())
+	}
+
+	return fi.Size(), nil
+}
+
 func createRecord(ctx context.Context, action *actions.Action, ghCtx *actions.GitHubContext, size int64) (*sizeRecord, error) {
+	action.Group("Creating size record")
+	defer action.EndGroup()
+
 	date, err := runCmd(ctx, action, "git", "log", "--pretty=format:%cI", "-1")
 	if err != nil {
 		return nil, fmt.Errorf("getting commit time: %w", err)
@@ -277,6 +302,11 @@ type sizeRecord struct {
 }
 
 func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) error {
+	action.Group("Adding size record")
+	defer action.EndGroup()
+
+	action.Infof("Adding size record for commit %s", record.Commit)
+
 	enc, err := json.Marshal(record)
 	if err != nil {
 		return fmt.Errorf("encoding size record: %w", err)
@@ -301,7 +331,7 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 	}
 	newlines := bytes.Count(notes, []byte("\n"))
 	if newlines == 0 {
-		action.Infof("no size records to compare against")
+		action.Infof("No size records to compare against")
 		return nil
 	}
 
@@ -324,8 +354,8 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 		}
 	}
 
-	action.Infof("binary size: %s (%d bytes)", humanize.Bytes(uint64(record.Size)), record.Size)
-	action.Infof("previous binary size: %s (%d bytes)", humanize.Bytes(uint64(records[0].Size)), records[0].Size)
+	action.Infof("Binary size: %s (%d bytes)", humanize.Bytes(uint64(record.Size)), record.Size)
+	action.Infof("Previous binary size: %s (%d bytes)", humanize.Bytes(uint64(records[0].Size)), records[0].Size)
 
 	times := make([]time.Time, 0, len(records)+1)
 	sizes := make([]float64, 0, len(records)+1)
