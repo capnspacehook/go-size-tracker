@@ -168,17 +168,8 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return fmt.Errorf("output file is a %s file not a regular file", fi.Mode().Type())
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", cwd)
-	if err != nil {
-		return fmt.Errorf("setting git safe directory: %w", err)
-	}
-	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", "/github/workspace")
-	if err != nil {
-		return fmt.Errorf("setting git safe directory: %w", err)
+	if err := setupGit(ctx, action); err != nil {
+		return fmt.Errorf("setting up git: %w", err)
 	}
 
 	var noSizeRecords bool
@@ -233,6 +224,33 @@ func runCmd(ctx context.Context, action *actions.Action, name string, args ...st
 func runSilentCmd(ctx context.Context, action *actions.Action, name string, args ...string) error {
 	_, err := runCmd(ctx, action, name, args...)
 	return err
+}
+
+// setting the global git config in the image itself doesn't seem to work
+// for some reason, so we do it every time here instead
+func setupGit(ctx context.Context, action *actions.Action) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", cwd)
+	if err != nil {
+		return fmt.Errorf("setting git safe directory: %w", err)
+	}
+	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", "/github/workspace")
+	if err != nil {
+		return fmt.Errorf("setting git safe directory: %w", err)
+	}
+	err = runSilentCmd(ctx, action, "git", "config", "--global", "user.name", "github-actions[bot]")
+	if err != nil {
+		return fmt.Errorf("setting git user name: %w", err)
+	}
+	err = runSilentCmd(ctx, action, "git", "config", "--global", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
+	if err != nil {
+		return fmt.Errorf("setting git user email: %w", err)
+	}
+
+	return nil
 }
 
 func createRecord(ctx context.Context, action *actions.Action, ghCtx *actions.GitHubContext, size int64) (*sizeRecord, error) {
