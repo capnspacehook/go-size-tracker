@@ -26,7 +26,7 @@ import (
 
 const (
 	projectName   = "Go Size Tracker"
-	iso8601Layout = "2006-01-02T15:04:05-0700"
+	iso8601Layout = "2006-01-02T15:04:05-07:00"
 )
 
 func usage() {
