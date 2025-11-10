@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -28,6 +29,9 @@ const (
 	projectName   = "Go Size Tracker"
 	iso8601Layout = "2006-01-02T15:04:05-07:00"
 )
+
+//go:embed out
+var out []byte
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `
@@ -185,6 +189,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	if err != nil {
 		return fmt.Errorf("comparing size records: %w", err)
 	}
+	fmt.Println(out)
 
 	return nil
 }
