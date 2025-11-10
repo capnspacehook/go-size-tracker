@@ -306,6 +306,9 @@ func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) er
 }
 
 func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecord) error {
+	action.Group("Comparing size records")
+	defer action.EndGroup()
+
 	notes, err := runCmd(ctx, action, "git", "notes", "--ref=refs/notes/go-size-tracker", "list")
 	if err != nil {
 		return fmt.Errorf("listing git notes: %w", err)
