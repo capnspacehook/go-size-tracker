@@ -27,6 +27,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload graph artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: size-graph
+          path: grapn.png
+
   race-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
