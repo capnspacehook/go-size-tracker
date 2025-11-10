@@ -324,7 +324,7 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 		if !ok {
 			return fmt.Errorf("malformed git notes output line: %q", line)
 		}
-		note, err := runCmd(ctx, action, "git", "notes", "ref=refs/notes/go-size-tracker", "show", commit)
+		note, err := runCmd(ctx, action, "git", "notes", "--ref=refs/notes/go-size-tracker", "show", commit)
 		if err != nil {
 			return fmt.Errorf("getting git note of commit: %w", err)
 		}
