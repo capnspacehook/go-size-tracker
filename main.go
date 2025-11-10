@@ -120,15 +120,14 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	addRecord := true
 	switch ghCtx.EventName {
 	case "push":
-		// don't add record if this is a push to a branch on a PR
-		// TODO: only do this if the branch is the default branch
 		owner, repo := ghCtx.Repo()
 		repository, _, err := ghCli.Repositories.Get(ctx, owner, repo)
 		if err != nil {
 			return fmt.Errorf("getting repository: %w", err)
 		}
-		if ghCtx.Ref != repository.GetDefaultBranch() {
-			action.Infof("Triggered by push to ref (%s) %s, default branch is %s", ghCtx.Ref, ghCtx.RefType, repository.GetDefaultBranch())
+		triggeredBranch := strings.TrimPrefix(ghCtx.Ref, "refs/heads/")
+		if triggeredBranch != repository.GetDefaultBranch() {
+			addRecord = false
 		}
 
 		prs, _, err := ghCli.PullRequests.List(ctx, owner, repo, &github.PullRequestListOptions{
@@ -209,7 +208,8 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 
 func runCmd(ctx context.Context, action *actions.Action, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	action.Noticef("%s", cmd)
+	action.Infof("%s", cmd)
+	fmt.Println(cmd.String())
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return out, fmt.Errorf("running command %s:\n%s\n%w", cmd, string(out), err)
