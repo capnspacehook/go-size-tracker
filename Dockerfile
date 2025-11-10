@@ -16,6 +16,8 @@ WORKDIR /work
 
 # remove source code, and ensure we don't get errors trying to stamp
 # VCS info in the binary
-RUN rm -rf /build
+RUN rm -rf /build && \
+    git config --global user.name "github-actions[bot]" && \
+    git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
 ENTRYPOINT [ "/bin/go-size-tracker" ]
