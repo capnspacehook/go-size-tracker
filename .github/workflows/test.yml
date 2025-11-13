@@ -27,6 +27,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload graph and comment artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: size-report
+          path: |
+            graph.png
+            comment.txt
+
   race-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15

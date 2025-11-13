@@ -12,7 +12,10 @@ require (
 )
 
 require (
+	github.com/go-echarts/go-echarts/v2 v2.6.7 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/tdewolff/minify/v2 v2.24.7 // indirect
+	github.com/tdewolff/parse/v2 v2.8.5 // indirect
 	golang.org/x/image v0.32.0 // indirect
 )
