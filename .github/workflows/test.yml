@@ -27,6 +27,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload graph and comment artifact
+        id: upload-artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v5
+        with:
+          name: graph
+          path: |
+            graph.png
+
+      - name: Read comment file
+        id: comment
+        if: github.event_name == 'pull_request'
+        run: |
+          COMMENT=$(cat comment.txt)
+          echo "comment=${COMMENT}" >> "$GITHUB_OUTPUT"
+
+      - name: Create comment
+        uses: thollander/actions-comment-pull-request@v3
+        if: github.event_name == 'pull_request'
+        with:
+          message: |
+            ${{ steps.comment.outputs.comment }}
+
+            A graph is available here: ${{ steps.upload-artifact.outputs.artifact-url }}
+          comment-tag: size-report
+
   race-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
