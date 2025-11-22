@@ -29,6 +29,13 @@ import (
 
 const (
 	projectName = "Go Size Tracker"
+
+	commentBody = `### Binary Size Report
+
+**%s by %f%% (%s)**
+
+Current size:  %s (%d bytes)
+Previous size: %s (%d bytes)`
 )
 
 func usage() {
@@ -350,18 +357,16 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 	}
 	defer commentFile.Close()
 
-	const commentBody = `### Binary Size Report
-
-**%s by %f%%**
-
-Current size: %s (%d bytes)
-Previous size: %s (%d bytes)`
-
 	prevRecord := records[len(records)-1]
+
+	d := math.Abs(float64(curRecord.Size - prevRecord.Size))
+	diff := humanize.IBytes(uint64(d))
+
 	percent := ((float64(curRecord.Size) - float64(prevRecord.Size)) / float64(prevRecord.Size)) * 100.0
 	verb := "Increased"
 	if percent < 0.0 {
 		verb = "Decreased"
+		diff = "-" + diff
 	}
 	percent = math.Abs(percent)
 
@@ -369,6 +374,7 @@ Previous size: %s (%d bytes)`
 		commentBody,
 		verb,
 		percent,
+		diff,
 		humanize.IBytes(curRecord.Size),
 		curRecord.Size,
 		humanize.IBytes(prevRecord.Size),
