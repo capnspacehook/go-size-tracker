@@ -378,27 +378,20 @@ Previous size: %s (%d bytes)`
 		return fmt.Errorf("writing comment file: %w", err)
 	}
 
-	times := make([]time.Time, 0, len(records)+1)
-	sizes := make([]float64, 0, len(records)+1)
-	for _, record := range records {
-		times = append(times, record.Date)
-		sizes = append(sizes, float64(record.Size))
+	bars := make([]chart.Value, 0, len(records)+1)
+	for _, r := range records {
+		bars = append(bars, chart.Value{
+			Value: float64(r.Size),
+			Label: r.Commit[:6],
+		})
 	}
-	times = append(times, record.Date)
-	sizes = append(sizes, float64(record.Size))
+	bars = append(bars, chart.Value{
+		Value: float64(record.Size),
+		Label: record.Commit[:6],
+	})
 
-	sizeSeries := chart.TimeSeries{
-		Name:    "Binary Sizes",
-		XValues: times,
-		YValues: sizes,
-	}
-
-	graph := chart.Chart{
-		XAxis: chart.XAxis{
-			Name:           "Commit Time",
-			ValueFormatter: chart.TimeDateValueFormatter,
-			TickPosition:   chart.TickPositionBetweenTicks,
-		},
+	graph := chart.BarChart{
+		Title: "Size over time",
 		YAxis: chart.YAxis{
 			Name: "Binary Sizes",
 			ValueFormatter: func(v any) string {
@@ -407,9 +400,7 @@ Previous size: %s (%d bytes)`
 				return fmt.Sprintf("%s (%d B)", humanize.IBytes(mb), mb)
 			},
 		},
-		Series: []chart.Series{
-			sizeSeries,
-		},
+		Bars: bars,
 	}
 
 	graphFile, err := os.Create("graph.png")
