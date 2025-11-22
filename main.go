@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime/debug"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -339,10 +338,6 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 			return fmt.Errorf("decoding size record: %w", err)
 		}
 	}
-
-	slices.SortStableFunc(records, func(a, b sizeRecord) int {
-		return a.Date.Compare(b.Date)
-	})
 
 	commentFile, err := os.Create("comment.txt")
 	if err != nil {
