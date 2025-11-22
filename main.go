@@ -21,7 +21,6 @@ import (
 	"github.com/google/shlex"
 	actions "github.com/sethvargo/go-githubactions"
 	"github.com/wcharczuk/go-chart/v2"
-	"github.com/wcharczuk/go-chart/v2/drawing"
 	"golang.org/x/sys/unix"
 )
 
@@ -274,14 +273,14 @@ func createRecord(ctx context.Context, action *actions.Action, ghCtx *actions.Gi
 	return &sizeRecord{
 		Commit: ghCtx.SHA,
 		Date:   commitDate,
-		Size:   uint32(size),
+		Size:   uint64(size),
 	}, nil
 }
 
 type sizeRecord struct {
 	Commit string
 	Date   time.Time
-	Size   uint32
+	Size   uint64
 }
 
 func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) error {
@@ -338,8 +337,37 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 		}
 	}
 
-	action.Infof("Binary size: %s (%d bytes)", humanize.Bytes(uint64(record.Size)), record.Size)
-	action.Infof("Previous binary size: %s (%d bytes)", humanize.Bytes(uint64(records[0].Size)), records[0].Size)
+	commentFile, err := os.Create("comment.txt")
+	if err != nil {
+		return fmt.Errorf("creating comment file: %w", err)
+	}
+	defer commentFile.Close()
+
+	const commentBody = `### Binary Size Report
+
+**%s by %f%%**
+
+Current size: %s (%d bytes)
+Previous size: %s (%d bytes)`
+
+	prevRecord := records[len(records)-1]
+	percent := float64(record.Size) / float64(prevRecord.Size) * 100.0
+	verb := "Increased"
+	if percent < 0.0 {
+		verb = "Decreased"
+	}
+	_, err = commentFile.WriteString(fmt.Sprintf(
+		commentBody,
+		verb,
+		percent,
+		humanize.Bytes(record.Size),
+		record.Size,
+		humanize.Bytes(prevRecord.Size),
+		prevRecord.Size,
+	))
+	if err != nil {
+		return fmt.Errorf("writing comment file: %w", err)
+	}
 
 	times := make([]time.Time, 0, len(records)+1)
 	sizes := make([]float64, 0, len(records)+1)
@@ -354,14 +382,6 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 		Name:    "Binary Sizes",
 		XValues: times,
 		YValues: sizes,
-	}
-	smaSeries := chart.SMASeries{
-		Name: "Binary Sizes - SMA",
-		Style: chart.Style{
-			StrokeColor:     drawing.ColorRed,
-			StrokeDashArray: []float64{5.0, 5.0},
-		},
-		InnerSeries: sizeSeries,
 	}
 
 	graph := chart.Chart{
@@ -380,18 +400,17 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 		},
 		Series: []chart.Series{
 			sizeSeries,
-			smaSeries,
 		},
 	}
 
 	graphFile, err := os.Create("graph.png")
 	if err != nil {
-		panic(fmt.Errorf("creating graph file: %w", err))
+		return fmt.Errorf("creating graph file: %w", err)
 	}
 	defer graphFile.Close()
 	err = graph.Render(chart.PNG, graphFile)
 	if err != nil {
-		panic(fmt.Errorf("rendering graph: %w", err))
+		return fmt.Errorf("rendering graph: %w", err)
 	}
 
 	return nil
