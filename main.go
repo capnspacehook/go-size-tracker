@@ -381,12 +381,13 @@ Previous size: %s (%d bytes)`
 	bars := make([]chart.Value, 0, len(records)+1)
 	for _, r := range records {
 		action.Infof("record: size=%s (%d bytes) date=%s", humanize.IBytes(r.Size), r.Size, r.Date.Format(time.RFC822))
-
 		bars = append(bars, chart.Value{
 			Value: float64(r.Size),
 			Label: r.Commit[:6],
 		})
 	}
+
+	action.Infof("current record: size=%s (%d bytes) date=%s", humanize.IBytes(curRecord.Size), curRecord.Size, curRecord.Date.Format(time.RFC822))
 	bars = append(bars, chart.Value{
 		Value: float64(curRecord.Size),
 		Label: curRecord.Commit[:6],
@@ -398,7 +399,6 @@ Previous size: %s (%d bytes)`
 			Name: "Binary Sizes",
 			ValueFormatter: func(v any) string {
 				mb := uint64(v.(float64))
-
 				return fmt.Sprintf("%s (%d B)", humanize.IBytes(mb), mb)
 			},
 		},
@@ -407,12 +407,14 @@ Previous size: %s (%d bytes)`
 
 	graphFile, err := os.Create("graph.png")
 	if err != nil {
-		return fmt.Errorf("creating graph file: %w", err)
+		action.Errorf("failed to create graph file: %v", err)
+		return nil
 	}
 	defer graphFile.Close()
 	err = graph.Render(chart.PNG, graphFile)
 	if err != nil {
-		return fmt.Errorf("rendering graph: %w", err)
+		action.Errorf("failed to render graph: %v", err)
+		return nil
 	}
 
 	return nil
