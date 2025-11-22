@@ -307,7 +307,7 @@ func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) er
 	return nil
 }
 
-func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecord) error {
+func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRecord) error {
 	action.Group("Comparing size records")
 	defer action.EndGroup()
 
@@ -358,7 +358,7 @@ Current size: %s (%d bytes)
 Previous size: %s (%d bytes)`
 
 	prevRecord := records[len(records)-1]
-	percent := ((float64(record.Size) - float64(prevRecord.Size)) / float64(prevRecord.Size)) * 100.0
+	percent := ((float64(curRecord.Size) - float64(prevRecord.Size)) / float64(prevRecord.Size)) * 100.0
 	verb := "Increased"
 	if percent < 0.0 {
 		verb = "Decreased"
@@ -369,9 +369,9 @@ Previous size: %s (%d bytes)`
 		commentBody,
 		verb,
 		percent,
-		humanize.Bytes(record.Size),
-		record.Size,
-		humanize.Bytes(prevRecord.Size),
+		humanize.IBytes(curRecord.Size),
+		curRecord.Size,
+		humanize.IBytes(prevRecord.Size),
 		prevRecord.Size,
 	))
 	if err != nil {
@@ -386,8 +386,8 @@ Previous size: %s (%d bytes)`
 		})
 	}
 	bars = append(bars, chart.Value{
-		Value: float64(record.Size),
-		Label: record.Commit[:6],
+		Value: float64(curRecord.Size),
+		Label: curRecord.Commit[:6],
 	})
 
 	graph := chart.BarChart{
