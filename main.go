@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -28,9 +29,6 @@ import (
 const (
 	projectName = "Go Size Tracker"
 )
-
-//go:embed out
-var out []byte
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `
@@ -188,7 +186,6 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	if err != nil {
 		return fmt.Errorf("comparing size records: %w", err)
 	}
-	fmt.Println(out)
 
 	return nil
 }
@@ -342,6 +339,10 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 		}
 	}
 
+	slices.SortStableFunc(records, func(a, b sizeRecord) int {
+		return a.Date.Compare(b.Date)
+	})
+
 	commentFile, err := os.Create("comment.txt")
 	if err != nil {
 		return fmt.Errorf("creating comment file: %w", err)
@@ -358,7 +359,7 @@ Previous size: %s (%d bytes)`
 	prevRecord := records[len(records)-1]
 	percent := float64(record.Size) / float64(prevRecord.Size) * 100.0
 	verb := "Increased"
-	if percent < 0.0 {
+	if prevRecord.Size > record.Size {
 		verb = "Decreased"
 	}
 	_, err = commentFile.WriteString(fmt.Sprintf(
