@@ -414,6 +414,8 @@ Previous size: %s (%d bytes)`
 	err = graph.Render(chart.PNG, graphFile)
 	if err != nil {
 		action.Errorf("failed to render graph: %v", err)
+		// remove the potentially incomplete graph image
+		_ = os.Remove("graph.png")
 		return nil
 	}
 
