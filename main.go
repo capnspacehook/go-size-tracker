@@ -4,14 +4,17 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"os/signal"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -337,6 +340,10 @@ func compareSizes(ctx context.Context, action *actions.Action, record *sizeRecor
 		}
 	}
 
+	slices.SortStableFunc(records, func(a, b sizeRecord) int {
+		return a.Date.Compare(b.Date)
+	})
+
 	commentFile, err := os.Create("comment.txt")
 	if err != nil {
 		return fmt.Errorf("creating comment file: %w", err)
@@ -351,11 +358,13 @@ Current size: %s (%d bytes)
 Previous size: %s (%d bytes)`
 
 	prevRecord := records[len(records)-1]
-	percent := float64(record.Size) / float64(prevRecord.Size) * 100.0
+	percent := ((float64(record.Size) - float64(prevRecord.Size)) / float64(prevRecord.Size)) * 100.0
 	verb := "Increased"
 	if percent < 0.0 {
 		verb = "Decreased"
 	}
+	percent = math.Abs(percent)
+
 	_, err = commentFile.WriteString(fmt.Sprintf(
 		commentBody,
 		verb,
