@@ -110,6 +110,19 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return errors.New("parsed build command is empty")
 	}
 
+	env := os.Environ()
+	buildEnv := action.GetInput("build-environment")
+	if buildEnv != "" {
+		r := bufio.NewScanner(strings.NewReader(buildEnv))
+		for r.Scan() {
+			line := r.Text()
+			if !strings.Contains(line, "=") {
+				return fmt.Errorf("invalid build-environment line: %q", line)
+			}
+			env = append(env, line)
+		}
+	}
+
 	ghToken := os.Getenv("GITHUB_TOKEN")
 	if ghToken == "" {
 		return errors.New("environmental variable GITHUB_TOKEN is unset")
@@ -156,7 +169,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	}
 
 	var noSizeRecords bool
-	noteFetchOutput, err := runCmd(ctx, action, "git", "fetch", "origin", "+refs/notes/go-size-tracker:refs/notes/go-size-tracker")
+	noteFetchOutput, err := runCmd(ctx, action, nil, "git", "fetch", "origin", "+refs/notes/go-size-tracker:refs/notes/go-size-tracker")
 	if err != nil {
 		if strings.Contains(string(noteFetchOutput), "couldn't find remote ref") {
 			if !addRecord {
@@ -172,7 +185,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return nil
 	}
 
-	size, err := buildBinary(ctx, action, buildArgs)
+	size, err := buildBinary(ctx, action, env, buildArgs)
 	if err != nil {
 		return fmt.Errorf("building binary: %w", err)
 	}
@@ -198,8 +211,9 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	return nil
 }
 
-func runCmd(ctx context.Context, action *actions.Action, name string, args ...string) ([]byte, error) {
+func runCmd(ctx context.Context, action *actions.Action, env []string, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = env
 	action.Infof("##[command]%s", cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -208,8 +222,8 @@ func runCmd(ctx context.Context, action *actions.Action, name string, args ...st
 	return out, nil
 }
 
-func runSilentCmd(ctx context.Context, action *actions.Action, name string, args ...string) error {
-	_, err := runCmd(ctx, action, name, args...)
+func runSilentCmd(ctx context.Context, action *actions.Action, env []string, name string, args ...string) error {
+	_, err := runCmd(ctx, action, env, name, args...)
 	return err
 }
 
@@ -223,19 +237,19 @@ func setupGit(ctx context.Context, action *actions.Action) error {
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
 	}
-	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", cwd)
+	err = runSilentCmd(ctx, action, nil, "git", "config", "--global", "--add", "safe.directory", cwd)
 	if err != nil {
 		return fmt.Errorf("setting git safe directory: %w", err)
 	}
-	err = runSilentCmd(ctx, action, "git", "config", "--global", "--add", "safe.directory", "/work")
+	err = runSilentCmd(ctx, action, nil, "git", "config", "--global", "--add", "safe.directory", "/work")
 	if err != nil {
 		return fmt.Errorf("setting git safe directory: %w", err)
 	}
-	err = runSilentCmd(ctx, action, "git", "config", "--global", "user.name", "github-actions[bot]")
+	err = runSilentCmd(ctx, action, nil, "git", "config", "--global", "user.name", "github-actions[bot]")
 	if err != nil {
 		return fmt.Errorf("setting git user name: %w", err)
 	}
-	err = runSilentCmd(ctx, action, "git", "config", "--global", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
+	err = runSilentCmd(ctx, action, nil, "git", "config", "--global", "user.email", "41898282+github-actions[bot]@users.noreply.github.com")
 	if err != nil {
 		return fmt.Errorf("setting git user email: %w", err)
 	}
@@ -243,11 +257,11 @@ func setupGit(ctx context.Context, action *actions.Action) error {
 	return nil
 }
 
-func buildBinary(ctx context.Context, action *actions.Action, buildArgs []string) (int64, error) {
+func buildBinary(ctx context.Context, action *actions.Action, env, buildArgs []string) (int64, error) {
 	action.Group("Building binary")
 	defer action.EndGroup()
 
-	err := runSilentCmd(ctx, action, buildArgs[0], buildArgs[1:]...)
+	err := runSilentCmd(ctx, action, env, buildArgs[0], buildArgs[1:]...)
 	if err != nil {
 		return 0, fmt.Errorf("running build command: %w", err)
 	}
@@ -270,7 +284,7 @@ func createRecord(ctx context.Context, action *actions.Action, ghCtx *actions.Gi
 	action.Group("Creating size record")
 	defer action.EndGroup()
 
-	date, err := runCmd(ctx, action, "git", "log", "--pretty=format:%ct", "-1")
+	date, err := runCmd(ctx, action, nil, "git", "log", "--pretty=format:%ct", "-1")
 	if err != nil {
 		return nil, fmt.Errorf("getting commit time: %w", err)
 	}
@@ -302,11 +316,11 @@ func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) er
 		return fmt.Errorf("encoding size record: %w", err)
 	}
 
-	err = runSilentCmd(ctx, action, "git", "notes", "--ref=refs/notes/go-size-tracker", "add", "-m", string(enc), "-f")
+	err = runSilentCmd(ctx, action, nil, "git", "notes", "--ref=refs/notes/go-size-tracker", "add", "-m", string(enc), "-f")
 	if err != nil {
 		return fmt.Errorf("creating git note of size record: %w", err)
 	}
-	err = runSilentCmd(ctx, action, "git", "push", "origin", "refs/notes/go-size-tracker")
+	err = runSilentCmd(ctx, action, nil, "git", "push", "origin", "refs/notes/go-size-tracker")
 	if err != nil {
 		return fmt.Errorf("pushing git note: %w", err)
 	}
@@ -318,7 +332,7 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 	action.Group("Comparing size records")
 	defer action.EndGroup()
 
-	notes, err := runCmd(ctx, action, "git", "notes", "--ref=refs/notes/go-size-tracker", "list")
+	notes, err := runCmd(ctx, action, nil, "git", "notes", "--ref=refs/notes/go-size-tracker", "list")
 	if err != nil {
 		return fmt.Errorf("listing git notes: %w", err)
 	}
@@ -336,7 +350,7 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 		if !ok {
 			return fmt.Errorf("malformed git notes output line: %q", line)
 		}
-		note, err := runCmd(ctx, action, "git", "notes", "--ref=refs/notes/go-size-tracker", "show", commit)
+		note, err := runCmd(ctx, action, nil, "git", "notes", "--ref=refs/notes/go-size-tracker", "show", commit)
 		if err != nil {
 			return fmt.Errorf("getting git note of commit: %w", err)
 		}

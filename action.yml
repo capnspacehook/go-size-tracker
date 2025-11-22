@@ -6,6 +6,11 @@ inputs:
     description: Relative path to the working directory that should be used to build your binary.
     required: false
     default: "."
+  build-environment:
+    description: |
+      Environment variables to set when building your binary. Must be separated by newlines.
+    required: false
+    default: ""
   build-command:
     description: |
       Command that will build the your binary. The binary must be written to a file named 'out'
