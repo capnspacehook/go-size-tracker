@@ -380,6 +380,8 @@ Previous size: %s (%d bytes)`
 
 	bars := make([]chart.Value, 0, len(records)+1)
 	for _, r := range records {
+		action.Infof("record: size=%s (%d bytes) date=%s", humanize.IBytes(r.Size), r.Size, r.Date.Format(time.RFC822))
+
 		bars = append(bars, chart.Value{
 			Value: float64(r.Size),
 			Label: r.Commit[:6],
