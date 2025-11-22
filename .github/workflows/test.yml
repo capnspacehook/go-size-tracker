@@ -40,8 +40,12 @@ jobs:
         id: comment
         if: github.event_name == 'pull_request'
         run: |
-          COMMENT=$(cat comment.txt)
-          echo "comment=${COMMENT}" >> "$GITHUB_OUTPUT"
+          COMMENT="$(cat comment.txt)"
+          {
+            echo "COMMENT<<EOF"
+            echo "${COMMENT}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create comment
         uses: thollander/actions-comment-pull-request@v3
