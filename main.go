@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -357,11 +358,13 @@ Current size: %s (%d bytes)
 Previous size: %s (%d bytes)`
 
 	prevRecord := records[len(records)-1]
-	percent := float64(record.Size) / float64(prevRecord.Size) * 100.0
+	percent := ((float64(record.Size) - float64(prevRecord.Size)) / float64(prevRecord.Size)) * 100.0
 	verb := "Increased"
-	if prevRecord.Size > record.Size {
+	if percent < 0.0 {
 		verb = "Decreased"
 	}
+	percent = math.Abs(percent)
+
 	_, err = commentFile.WriteString(fmt.Sprintf(
 		commentBody,
 		verb,
