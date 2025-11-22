@@ -127,6 +127,9 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	if ghToken == "" {
 		return errors.New("environmental variable GITHUB_TOKEN is unset")
 	}
+	if err := os.Unsetenv("GITHUB_TOKEN"); err != nil {
+		return fmt.Errorf("unsetting GITHUB_TOKEN: %w", err)
+	}
 
 	ghCtx, err := action.Context()
 	if err != nil {
