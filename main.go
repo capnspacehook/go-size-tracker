@@ -104,6 +104,11 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return errors.New("required input 'working-directory' is unset")
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting current working directory: %w", err)
+	}
+
 	if workingDir != "." {
 		if !filepath.IsLocal(workingDir) {
 			return errors.New("working-directory must be a local path")
@@ -122,6 +127,8 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		if err = os.Chdir(workingDir); err != nil {
 			return fmt.Errorf("changing working directory: %w", err)
 		}
+
+		action.Infof("Changed working directory to %s", workingDir)
 	}
 
 	env := os.Environ()
@@ -193,7 +200,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		action.Infof("Will not add size record for push to non default branch")
 	}
 
-	if err := setupGit(ctx, action); err != nil {
+	if err := setupGit(ctx, action, cwd); err != nil {
 		return fmt.Errorf("setting up git: %w", err)
 	}
 
@@ -258,15 +265,11 @@ func runSilentCmd(ctx context.Context, action *actions.Action, env []string, nam
 
 // setting the global git config in the image itself doesn't seem to work
 // for some reason, so we do it every time here instead
-func setupGit(ctx context.Context, action *actions.Action) error {
+func setupGit(ctx context.Context, action *actions.Action, repoRoot string) error {
 	action.Group("Setting up git")
 	defer action.EndGroup()
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting working directory: %w", err)
-	}
-	err = runSilentCmd(ctx, action, nil, "git", "config", "--global", "--add", "safe.directory", cwd)
+	err := runSilentCmd(ctx, action, nil, "git", "config", "--global", "--add", "safe.directory", repoRoot)
 	if err != nil {
 		return fmt.Errorf("setting git safe directory: %w", err)
 	}
