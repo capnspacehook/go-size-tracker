@@ -11,13 +11,12 @@ inputs:
       Environment variables to set when building your binary. Must be separated by newlines.
     required: false
     default: ""
-  build-command:
+  build-arguments:
     description: |
-      Command that will build the your binary. The binary must be written to a file named 'out'
+      Arguments to 'go build' that will build your binary. The binary must be written to a file named 'out'
       in the working directory.
     required: false
-    default: |
-      go build -buildvcs=false -ldflags="-s -w" -trimpath -o out
+    default: '-buildvcs=false -ldflags="-s -w" -trimpath -o out'
 
 runs:
   using: docker

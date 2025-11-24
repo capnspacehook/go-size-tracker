@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"runtime/debug"
 	"slices"
 	"strconv"
@@ -98,16 +99,26 @@ type errJustExit int
 func (e errJustExit) Error() string { return fmt.Sprintf("exit: %d", e) }
 
 func mainErr(ctx context.Context, action *actions.Action) error {
-	buildCmd := action.GetInput("build-command")
-	if buildCmd == "" {
-		return errors.New("required input 'build-command' is unset")
+	workingDir := action.GetInput("working-directory")
+	if workingDir == "" {
+		return errors.New("required input 'working-directory' is unset")
 	}
-	buildArgs, err := shlex.Split(buildCmd)
-	if err != nil {
-		return fmt.Errorf("parsing build command: %w", err)
-	}
-	if len(buildArgs) == 0 {
-		return errors.New("parsed build command is empty")
+
+	if workingDir != "." {
+		if !filepath.IsLocal(workingDir) {
+			return errors.New("working-directory must be a local path")
+		}
+		r, err := os.OpenRoot(".")
+		fi, err := r.Stat(workingDir)
+		if err != nil {
+			return fmt.Errorf("getting working directory: %w", err)
+		}
+		if !fi.IsDir() {
+			return fmt.Errorf("working-directory must be a directory")
+		}
+		if err = os.Chdir(workingDir); err != nil {
+			return fmt.Errorf("changing working directory: %w", err)
+		}
 	}
 
 	env := os.Environ()
@@ -121,6 +132,18 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 			}
 			env = append(env, line)
 		}
+	}
+
+	buildArgsInput := action.GetInput("build-arguments")
+	if buildArgsInput == "" {
+		return errors.New("required input 'build-arguments' is unset")
+	}
+	buildArgs, err := shlex.Split(buildArgsInput)
+	if err != nil {
+		return fmt.Errorf("parsing build arguments: %w", err)
+	}
+	if len(buildArgs) == 0 {
+		return errors.New("parsed build arguments is empty")
 	}
 
 	ghToken := os.Getenv("GITHUB_TOKEN")
@@ -264,7 +287,7 @@ func buildBinary(ctx context.Context, action *actions.Action, env, buildArgs []s
 	action.Group("Building binary")
 	defer action.EndGroup()
 
-	err := runSilentCmd(ctx, action, env, buildArgs[0], buildArgs[1:]...)
+	err := runSilentCmd(ctx, action, env, "go", append([]string{"build"}, buildArgs...)...)
 	if err != nil {
 		return 0, fmt.Errorf("running build command: %w", err)
 	}
