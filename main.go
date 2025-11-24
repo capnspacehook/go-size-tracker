@@ -239,7 +239,7 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 		return nil
 	}
 
-	err = compareSizes(ctx, action, record)
+	err = compareSizes(ctx, action, record, cwd)
 	if err != nil {
 		return fmt.Errorf("comparing size records: %w", err)
 	}
@@ -360,7 +360,7 @@ func addSize(ctx context.Context, action *actions.Action, record *sizeRecord) er
 	return nil
 }
 
-func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRecord) error {
+func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRecord, rootDir string) error {
 	action.Group("Comparing size records")
 	defer action.EndGroup()
 
@@ -397,7 +397,7 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 		return a.Date.Compare(b.Date)
 	})
 
-	commentFile, err := os.Create("comment.txt")
+	commentFile, err := os.Create(filepath.Join(rootDir, "comment.txt"))
 	if err != nil {
 		return fmt.Errorf("creating comment file: %w", err)
 	}
@@ -430,6 +430,8 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 		return fmt.Errorf("writing comment file: %w", err)
 	}
 
+	action.Infof("wrote comment file to %s", commentFile.Name())
+
 	bars := make([]chart.Value, 0, len(records)+1)
 	for _, r := range records {
 		action.Infof("record: size=%s (%d bytes) date=%s", humanize.IBytes(r.Size), r.Size, r.Date.Format(time.RFC822))
@@ -458,7 +460,7 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 		Bars: bars,
 	}
 
-	graphFile, err := os.Create("graph.png")
+	graphFile, err := os.Create(filepath.Join(rootDir, "graph.png"))
 	if err != nil {
 		action.Errorf("failed to create graph file: %v", err)
 		return nil
@@ -471,6 +473,8 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 		_ = os.Remove("graph.png")
 		return nil
 	}
+
+	action.Infof("wrote graph image to %s", graphFile.Name())
 
 	return nil
 }
