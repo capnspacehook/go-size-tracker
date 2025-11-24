@@ -136,6 +136,12 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 			env = append(env, line)
 		}
 	}
+	// remove GITHUB_TOKEN from the environment that is passed to the
+	// build command, as the arguments are specified by users and are
+	// not trusted
+	env = slices.DeleteFunc(env, func(s string) bool {
+		return strings.HasPrefix(s, "GITHUB_TOKEN=")
+	})
 
 	buildArgsInput := action.GetInput("build-arguments")
 	if buildArgsInput == "" {
@@ -152,9 +158,6 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 	ghToken := os.Getenv("GITHUB_TOKEN")
 	if ghToken == "" {
 		return errors.New("environmental variable GITHUB_TOKEN is unset")
-	}
-	if err := os.Unsetenv("GITHUB_TOKEN"); err != nil {
-		return fmt.Errorf("unsetting GITHUB_TOKEN: %w", err)
 	}
 
 	ghCtx, err := action.Context()
