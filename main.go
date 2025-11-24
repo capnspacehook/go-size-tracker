@@ -109,12 +109,15 @@ func mainErr(ctx context.Context, action *actions.Action) error {
 			return errors.New("working-directory must be a local path")
 		}
 		r, err := os.OpenRoot(".")
+		if err != nil {
+			return fmt.Errorf("opening root directory: %w", err)
+		}
 		fi, err := r.Stat(workingDir)
 		if err != nil {
 			return fmt.Errorf("getting working directory: %w", err)
 		}
 		if !fi.IsDir() {
-			return fmt.Errorf("working-directory must be a directory")
+			return errors.New("working-directory must be a directory")
 		}
 		if err = os.Chdir(workingDir); err != nil {
 			return fmt.Errorf("changing working directory: %w", err)
@@ -444,6 +447,7 @@ func compareSizes(ctx context.Context, action *actions.Action, curRecord *sizeRe
 		YAxis: chart.YAxis{
 			Name: "Binary Sizes",
 			ValueFormatter: func(v any) string {
+				//nolint:forcetypeassert
 				mb := uint64(v.(float64))
 				return fmt.Sprintf("%s (%d B)", humanize.IBytes(mb), mb)
 			},
