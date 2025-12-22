@@ -8,7 +8,7 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/sethvargo/go-githubactions v1.3.1
 	github.com/wcharczuk/go-chart/v2 v2.1.2
-	golang.org/x/sys v0.38.0
+	golang.org/x/sys v0.39.0
 )
 
 require (
